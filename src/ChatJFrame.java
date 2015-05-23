@@ -35,6 +35,7 @@ public class ChatJFrame extends JFrame implements ActionListener {
         initComponents();
         myAddress = Inet4Address.getLocalHost().getHostAddress();
         myHost.setText(myAddress);
+        peerHost.setText("192.168.1.2");
         bSend.setEnabled(false);
         bLeave.setEnabled(false);
         bSend.addActionListener(this);
@@ -212,6 +213,7 @@ public class ChatJFrame extends JFrame implements ActionListener {
             Registry registry;
             try {
                 registry = LocateRegistry.getRegistry(peerHost.getText());
+//                registry = LocateRegistry.getRegistry("192.168.1.2");
                 node = (ChatInterface) registry.lookup("chat");
                 bSend.setEnabled(true);
                 bCreate.setEnabled(false);

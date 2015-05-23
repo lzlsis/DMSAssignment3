@@ -48,7 +48,7 @@ public class ChatRoom implements ChatInterface{
       {  System.err.println("Unable to bind to registry: " + e);
       }
       // note that separate thread created to keep remoteObject alive
-      System.out.println("Main method of RMIGreetingImpl done");
+      System.out.println("Chat Room is Created");
     }
     @Override
     public ArrayList<String> getChatHistory() throws RemoteException {
