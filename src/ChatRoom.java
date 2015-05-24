@@ -6,6 +6,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -22,9 +23,12 @@ import java.util.ArrayList;
 public class ChatRoom implements ChatInterface{
 
     private ArrayList<String> chatHistory;
+    private int currentPort = 4444;
+    private HashMap<String, Integer> connections;
     
     public ChatRoom(int port) throws RemoteException{
         chatHistory = new ArrayList<String>();
+        connections = new HashMap<String, Integer>();
         LocateRegistry.createRegistry(port);
         try
       {  // create stub (note prior to Java 5.0 must use rmic utility)
@@ -63,6 +67,17 @@ public class ChatRoom implements ChatInterface{
     @Override
     public void clear() throws RemoteException {
        chatHistory.clear();
+    }
+
+    @Override
+    public void UpdateTimestamp(String host) throws RemoteException {
+        connections.put(host, currentPort);
+        currentPort++;
+    }
+
+    @Override
+    public HashMap<String, Integer> getVectorTimestamp() throws RemoteException {
+        return connections;
     }
 
 
