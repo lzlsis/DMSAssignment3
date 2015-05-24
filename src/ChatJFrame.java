@@ -1,7 +1,16 @@
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.PrintWriter;
 import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -31,9 +40,11 @@ public class ChatJFrame extends JFrame implements ActionListener {
     private ChatInterface node;
     private String myAddress;
     private Timer timer;
+    private boolean stopRequested;
 
     public ChatJFrame() throws UnknownHostException {
         initComponents();
+        this.setTitle("PUBLIC CHAT ROOM");
         myAddress = Inet4Address.getLocalHost().getHostAddress();
         myHost.setText(myAddress);
         chatRoomHost.setText("192.168.1.9");
@@ -44,6 +55,7 @@ public class ChatJFrame extends JFrame implements ActionListener {
         bJoin.addActionListener(this);
         bLeave.addActionListener(this);
         timer = new Timer(50, this);
+
     }
 
     /**
@@ -59,16 +71,23 @@ public class ChatJFrame extends JFrame implements ActionListener {
         tMessage = new javax.swing.JTextArea();
         bSend = new javax.swing.JButton();
         jPanel1 = new javax.swing.JPanel();
+        jPanel2 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
         myHost = new javax.swing.JLabel();
+        jPanel3 = new javax.swing.JPanel();
+        jLabel3 = new javax.swing.JLabel();
         tPort = new javax.swing.JTextField();
         bCreate = new javax.swing.JButton();
         jLabel2 = new javax.swing.JLabel();
+        jPanel4 = new javax.swing.JPanel();
+        jLabel4 = new javax.swing.JLabel();
         chatRoomHost = new javax.swing.JTextField();
         bJoin = new javax.swing.JButton();
         bLeave = new javax.swing.JButton();
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jScrollPane1 = new javax.swing.JScrollPane();
         tPublic = new javax.swing.JTextArea();
+        jLabel5 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -80,11 +99,21 @@ public class ChatJFrame extends JFrame implements ActionListener {
 
         jPanel1.setLayout(new java.awt.GridLayout(6, 1));
 
-        myHost.setText("jLabel1");
-        jPanel1.add(myHost);
+        jLabel1.setText("Your Address: ");
+        jPanel2.add(jLabel1);
+
+        myHost.setText("255.255.255.255");
+        jPanel2.add(myHost);
+
+        jPanel1.add(jPanel2);
+
+        jLabel3.setText("Room Number:");
+        jPanel3.add(jLabel3);
 
         tPort.setText("1099");
-        jPanel1.add(tPort);
+        jPanel3.add(tPort);
+
+        jPanel1.add(jPanel3);
 
         bCreate.setText("Create");
         jPanel1.add(bCreate);
@@ -92,8 +121,13 @@ public class ChatJFrame extends JFrame implements ActionListener {
         jLabel2.setText("OR");
         jPanel1.add(jLabel2);
 
+        jLabel4.setText("Room Address: ");
+        jPanel4.add(jLabel4);
+
         chatRoomHost.setText("255.255.255.255");
-        jPanel1.add(chatRoomHost);
+        jPanel4.add(chatRoomHost);
+
+        jPanel1.add(jPanel4);
 
         bJoin.setText("Join");
         jPanel1.add(bJoin);
@@ -106,6 +140,8 @@ public class ChatJFrame extends JFrame implements ActionListener {
 
         jTabbedPane1.addTab("Public Chat", jScrollPane1);
 
+        jLabel5.setText("Say something");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -113,13 +149,19 @@ public class ChatJFrame extends JFrame implements ActionListener {
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 326, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2))
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(bLeave)
-                    .addComponent(bSend))
-                .addContainerGap())
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap())
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(bSend)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(bLeave))))
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jLabel5)
+                .addGap(0, 0, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -127,14 +169,22 @@ public class ChatJFrame extends JFrame implements ActionListener {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(bLeave)
                         .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(jTabbedPane1))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(bSend)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 294, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jLabel5)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(43, 43, 43)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(bSend)
+                            .addComponent(bLeave)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
         );
 
         pack();
@@ -185,8 +235,15 @@ public class ChatJFrame extends JFrame implements ActionListener {
     private javax.swing.JButton bLeave;
     private javax.swing.JButton bSend;
     private javax.swing.JTextField chatRoomHost;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTabbedPane jTabbedPane1;
@@ -246,9 +303,11 @@ public class ChatJFrame extends JFrame implements ActionListener {
             timer.stop();
         } else if (e.getSource() == bSend) {
             try {
-                node.createChat(myAddress + ": \n\t" + tMessage.getText());
-                tMessage.setText("");
-                updateChatBoard();
+                if (tMessage.getText().length() > 0) {
+                    node.createChat(myAddress + ": \n\t" + tMessage.getText());
+                    tMessage.setText("");
+                    updateChatBoard();
+                }
 
             } catch (RemoteException ex) {
                 Logger.getLogger(ChatJFrame.class.getName()).log(Level.SEVERE, null, ex);
@@ -260,7 +319,7 @@ public class ChatJFrame extends JFrame implements ActionListener {
                 Logger.getLogger(ChatJFrame.class.getName()).log(Level.SEVERE, null, ex);
             }
 
-        }
+        } 
     }
 
     private void updateChatBoard() throws RemoteException {
@@ -279,5 +338,6 @@ public class ChatJFrame extends JFrame implements ActionListener {
             tPublic.setText(stringBuilder.toString());
         }
     }
+////////////////////////////////////////////////////////////////////
 
 }
