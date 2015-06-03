@@ -1,22 +1,17 @@
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.PrintWriter;
 import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
@@ -37,10 +32,13 @@ public class ChatJFrame extends JFrame implements ActionListener {
      * Creates new form ChatJFrame
      */
 //    private final int PUBLIC_CHAT = 0, PRIVATE_CHAT = 1;
+    private final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private ChatInterface node;
     private String myAddress;
     private Timer timer;
-    private boolean stopRequested;
+    private HashMap<String, Integer> vectorTimestamp;
+    private int myPower;
+    private boolean voted, needChange;
 
     public ChatJFrame() throws UnknownHostException {
         initComponents();
@@ -48,13 +46,27 @@ public class ChatJFrame extends JFrame implements ActionListener {
         myAddress = Inet4Address.getLocalHost().getHostAddress();
         myHost.setText(myAddress);
         chatRoomHost.setText("192.168.1.9");
+        chatRoomHost.setText(myAddress);
+        
+        vectorTimestamp = new HashMap<>();
+        vectorTimestamp.put(myAddress, 0);
+        lCurrentLeader.setText("Unknow");
+        lLeaderPower.setText("Unknow");
+        myPower = (new Random()).nextInt(10) + 1;
+        tMyPower.setText("" + myPower);
         bSend.setEnabled(false);
         bLeave.setEnabled(false);
+        bElection.setEnabled(false);
         bSend.addActionListener(this);
         bCreate.addActionListener(this);
         bJoin.addActionListener(this);
         bLeave.addActionListener(this);
+        bElection.addActionListener(this);
+        bDoSomethings.addActionListener(this);
         timer = new Timer(50, this);
+
+        voted = false;
+        needChange = false;
 
     }
 
@@ -71,15 +83,12 @@ public class ChatJFrame extends JFrame implements ActionListener {
         tMessage = new javax.swing.JTextArea();
         bSend = new javax.swing.JButton();
         jPanel1 = new javax.swing.JPanel();
-        jPanel2 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         myHost = new javax.swing.JLabel();
-        jPanel3 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         tPort = new javax.swing.JTextField();
         bCreate = new javax.swing.JButton();
         jLabel2 = new javax.swing.JLabel();
-        jPanel4 = new javax.swing.JPanel();
         jLabel4 = new javax.swing.JLabel();
         chatRoomHost = new javax.swing.JTextField();
         bJoin = new javax.swing.JButton();
@@ -88,6 +97,15 @@ public class ChatJFrame extends JFrame implements ActionListener {
         jScrollPane1 = new javax.swing.JScrollPane();
         tPublic = new javax.swing.JTextArea();
         jLabel5 = new javax.swing.JLabel();
+        bDoSomethings = new javax.swing.JButton();
+        jPanel2 = new javax.swing.JPanel();
+        jLabel6 = new javax.swing.JLabel();
+        lCurrentLeader = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        lLeaderPower = new javax.swing.JLabel();
+        jLabel10 = new javax.swing.JLabel();
+        tMyPower = new javax.swing.JTextField();
+        bElection = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -97,23 +115,19 @@ public class ChatJFrame extends JFrame implements ActionListener {
 
         bSend.setText("Send");
 
-        jPanel1.setLayout(new java.awt.GridLayout(6, 1));
+        jPanel1.setLayout(new java.awt.GridLayout(10, 1));
 
         jLabel1.setText("Your Address: ");
-        jPanel2.add(jLabel1);
+        jPanel1.add(jLabel1);
 
         myHost.setText("255.255.255.255");
-        jPanel2.add(myHost);
-
-        jPanel1.add(jPanel2);
+        jPanel1.add(myHost);
 
         jLabel3.setText("Room Number:");
-        jPanel3.add(jLabel3);
+        jPanel1.add(jLabel3);
 
         tPort.setText("1099");
-        jPanel3.add(tPort);
-
-        jPanel1.add(jPanel3);
+        jPanel1.add(tPort);
 
         bCreate.setText("Create");
         jPanel1.add(bCreate);
@@ -122,17 +136,16 @@ public class ChatJFrame extends JFrame implements ActionListener {
         jPanel1.add(jLabel2);
 
         jLabel4.setText("Room Address: ");
-        jPanel4.add(jLabel4);
+        jPanel1.add(jLabel4);
 
         chatRoomHost.setText("255.255.255.255");
-        jPanel4.add(chatRoomHost);
-
-        jPanel1.add(jPanel4);
+        jPanel1.add(chatRoomHost);
 
         bJoin.setText("Join");
         jPanel1.add(bJoin);
 
         bLeave.setText("Leave");
+        jPanel1.add(bLeave);
 
         tPublic.setColumns(20);
         tPublic.setRows(5);
@@ -142,45 +155,69 @@ public class ChatJFrame extends JFrame implements ActionListener {
 
         jLabel5.setText("Say something");
 
+        bDoSomethings.setText("Do something");
+
+        jPanel2.setLayout(new javax.swing.BoxLayout(jPanel2, javax.swing.BoxLayout.PAGE_AXIS));
+
+        jLabel6.setText("Leader: ");
+        jPanel2.add(jLabel6);
+
+        lCurrentLeader.setText("Current Leader");
+        jPanel2.add(lCurrentLeader);
+
+        jLabel8.setText("Leader Power: ");
+        jPanel2.add(jLabel8);
+
+        lLeaderPower.setText("Current Power");
+        jPanel2.add(lLeaderPower);
+
+        jLabel10.setText("My Power: ");
+        jPanel2.add(jLabel10);
+
+        tMyPower.setText("0");
+        jPanel2.add(tMyPower);
+
+        bElection.setText("Start Election");
+        jPanel2.add(bElection);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 326, Short.MAX_VALUE)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap())
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(bSend)
+                        .addComponent(jLabel5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(bLeave))))
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(jLabel5)
-                .addGap(0, 0, Short.MAX_VALUE))
+                        .addComponent(bDoSomethings))
+                    .addComponent(jTabbedPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 436, Short.MAX_VALUE)
+                    .addComponent(jScrollPane2))
+                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(bSend)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(35, 35, 35))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 294, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel5)
+                        .addContainerGap()
+                        .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 314, Short.MAX_VALUE)
+                        .addGap(18, 18, 18)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(bDoSomethings, javax.swing.GroupLayout.Alignment.TRAILING))))
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addGap(43, 43, 43)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(bSend)
-                            .addComponent(bLeave)))
+                        .addComponent(bSend))
                     .addGroup(layout.createSequentialGroup()
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -231,24 +268,30 @@ public class ChatJFrame extends JFrame implements ActionListener {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton bCreate;
+    private javax.swing.JButton bDoSomethings;
+    private javax.swing.JButton bElection;
     private javax.swing.JButton bJoin;
     private javax.swing.JButton bLeave;
     private javax.swing.JButton bSend;
     private javax.swing.JTextField chatRoomHost;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel8;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel3;
-    private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JLabel lCurrentLeader;
+    private javax.swing.JLabel lLeaderPower;
     private javax.swing.JLabel myHost;
     private javax.swing.JTextArea tMessage;
+    private javax.swing.JTextField tMyPower;
     private javax.swing.JTextField tPort;
     private javax.swing.JTextArea tPublic;
     // End of variables declaration//GEN-END:variables
@@ -259,13 +302,15 @@ public class ChatJFrame extends JFrame implements ActionListener {
             try {
                 int port = Integer.parseInt(tPort.getText());
                 node = new ChatRoom(port);
-                node.UpdateTimestamp(myAddress);
+                node.updateTimestamp(vectorTimestamp);
+                node.election(myAddress, myPower);
+                node.startElection(false);
                 bSend.setEnabled(true);
                 bCreate.setEnabled(false);
                 bJoin.setEnabled(false);
                 chatRoomHost.setEditable(false);
                 bLeave.setEnabled(true);
-
+                bElection.setEnabled(true);
                 timer.start();
 
             } catch (NumberFormatException ex) {
@@ -279,12 +324,14 @@ public class ChatJFrame extends JFrame implements ActionListener {
                 registry = LocateRegistry.getRegistry(chatRoomHost.getText());
 //                registry = LocateRegistry.getRegistry("192.168.1.2");
                 node = (ChatInterface) registry.lookup("chat");
-                node.UpdateTimestamp(myAddress);
+                node.updateTimestamp(vectorTimestamp);
                 bSend.setEnabled(true);
                 bCreate.setEnabled(false);
                 bJoin.setEnabled(false);
                 bLeave.setEnabled(true);
                 chatRoomHost.setEditable(false);
+
+                bElection.setEnabled(true);
                 timer.start();
 
             } catch (RemoteException ex) {
@@ -300,12 +347,17 @@ public class ChatJFrame extends JFrame implements ActionListener {
             bJoin.setEnabled(true);
             chatRoomHost.setEditable(true);
 
+            bElection.setEnabled(false);
+
             timer.stop();
         } else if (e.getSource() == bSend) {
+            updateVT();
             try {
                 if (tMessage.getText().length() > 0) {
-                    node.createChat(myAddress + ": \n\t" + tMessage.getText());
-                    tMessage.setText("");
+                    Date date = new Date();
+                    String message = myAddress + ":\t" + TIME_FORMAT.format(date) + "\n\t" + tMessage.getText();
+                    node.createChat(message);
+                    node.updateTimestamp(vectorTimestamp);
                     updateChatBoard();
                 }
 
@@ -315,11 +367,30 @@ public class ChatJFrame extends JFrame implements ActionListener {
         } else if (e.getSource() == timer) {
             try {
                 updateChatBoard();
+                node.updateTimestamp(vectorTimestamp);
+                changeLeader(node.checkProgress());
+                
+                //////////////////////
+//                System.out.println(node.getTempPower());
+                
+                /////////////////////////
             } catch (RemoteException ex) {
                 Logger.getLogger(ChatJFrame.class.getName()).log(Level.SEVERE, null, ex);
             }
+        } else if (e.getSource() == bElection) {
+            try {
+                myPower = Integer.parseInt(tMyPower.getText());
+                updateChatBoard();
 
-        } 
+                node.updateTimestamp(vectorTimestamp);
+                node.election(myAddress, myPower);
+                node.startElection(true);
+            } catch (RemoteException ex) {
+                Logger.getLogger(ChatJFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else if (e.getSource() == bDoSomethings) {
+            updateVT();
+        }
     }
 
     private void updateChatBoard() throws RemoteException {
@@ -340,4 +411,46 @@ public class ChatJFrame extends JFrame implements ActionListener {
     }
 ////////////////////////////////////////////////////////////////////
 
+    private void updateVT() {
+        vectorTimestamp.put(myAddress, vectorTimestamp.get(myAddress) + 1);
+    }
+
+    private void changeLeader(boolean electionInProgress) {
+
+        try {
+            int temp = 0;
+            if (electionInProgress) {
+                temp = node.getTempPower();
+                if (!voted) {
+                    if (temp < myPower) {
+                        node.election(myAddress, myPower);
+                        needChange = true;
+                    }
+                    node.startElection(false);
+                    voted = true;
+                }
+                if (needChange) {
+                    if (temp < myPower) {
+                        node.startElection(true);
+                    }
+                }
+
+            } else {
+                if (needChange) {
+                    if (temp < myPower) {
+                        node.election(myAddress, myPower);
+                        node.startElection(true);
+                    } else {
+                        needChange = false;
+                    }
+                } else {
+                    voted = false;
+                    lCurrentLeader.setText(node.getLeader());
+                    lLeaderPower.setText("" + node.getPower());
+                }
+            }
+        } catch (RemoteException ex) {
+            Logger.getLogger(ChatJFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }

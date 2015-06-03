@@ -19,6 +19,12 @@ public interface ChatInterface extends Remote
     public ArrayList<String> getChatHistory() throws RemoteException; 
     public void createChat(String message) throws RemoteException; 
     public void clear() throws RemoteException; 
-    public void UpdateTimestamp(String host) throws RemoteException; 
+    public void updateTimestamp(HashMap<String, Integer> timestamp) throws RemoteException; 
+    public void election(String name, int power) throws RemoteException; 
+    public void startElection(boolean start) throws RemoteException; 
+    public boolean checkProgress() throws RemoteException; 
+    public int getTempPower() throws RemoteException; 
+    public String getLeader() throws RemoteException; 
+    public int getPower() throws RemoteException; 
     public HashMap<String, Integer> getVectorTimestamp() throws RemoteException; 
 }

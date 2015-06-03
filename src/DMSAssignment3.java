@@ -18,9 +18,9 @@ public class DMSAssignment3 {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) throws UnknownHostException {
-        // TODO code application logic here
-        System.out.println(Inet4Address.getLocalHost().getHostAddress());
-    }
+//    public static void main(String[] args) throws UnknownHostException {
+//        // TODO code application logic here
+//        System.out.println(Inet4Address.getLocalHost().getHostAddress());
+//    }
     
 }
