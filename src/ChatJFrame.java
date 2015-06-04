@@ -359,6 +359,7 @@ public class ChatJFrame extends JFrame implements ActionListener {
                     node.createChat(message);
                     node.updateTimestamp(vectorTimestamp);
                     updateChatBoard();
+                    tMessage.setText("");
                 }
 
             } catch (RemoteException ex) {
